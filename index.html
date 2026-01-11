@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrepreneur Toastmasters Shanghai Timer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Template Selection Panel -->
+        <div class="template-selection" id="templatePanel">
+            <div class="header">
+                <img src="Club logo.jpg" alt="Entrepreneurs Toastmasters Shanghai" class="club-logo">
+                <h1>Timer</h1>
+            </div>
+            <h2>Choose a Template</h2>
+            
+            <div class="template-grid">
+                <button class="template-btn" id="preparedSpeechBtn">
+                    <span class="template-icon">🎤</span>
+                    <span class="template-name">Prepared Speech</span>
+                    <span class="template-desc">5m → 6m → 7m → 7m30s</span>
+                </button>
+                
+                <button class="template-btn" id="tableTopicBtn">
+                    <span class="template-icon">💬</span>
+                    <span class="template-name">Table Topic</span>
+                    <span class="template-desc">1m → 1m30s → 2m → 2m30s</span>
+                </button>
+                
+                <button class="template-btn" id="evaluationBtn">
+                    <span class="template-icon">📋</span>
+                    <span class="template-name">Individual Evaluation</span>
+                    <span class="template-desc">2m → 2m30s → 3m → 3m30s</span>
+                </button>
+                
+                <button class="template-btn" id="keynoteBtn">
+                    <span class="template-icon">🎯</span>
+                    <span class="template-name">Keynote</span>
+                    <span class="template-desc">10m → 15m → 20m</span>
+                </button>
+                
+                <button class="template-btn template-btn-customize" id="customizeBtn">
+                    <span class="template-icon">⚙️</span>
+                    <span class="template-name">Customize</span>
+                    <span class="template-desc">Set your own times</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Custom Setup Panel -->
+        <div class="timer-setup" id="setupPanel" style="display: none;">
+            <div class="header">
+                <img src="Club logo.jpg" alt="Entrepreneurs Toastmasters Shanghai" class="club-logo">
+                <h1>Timer</h1>
+            </div>
+            <div class="input-group">
+                <label>Green Card Time <span class="optional">(optional)</span></label>
+                <div class="time-inputs">
+                    <input type="number" id="greenMin" min="0" placeholder="min">
+                    <span class="separator">:</span>
+                    <input type="number" id="greenSec" min="0" max="59" placeholder="sec">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label>Yellow Card Time <span class="optional">(optional)</span></label>
+                <div class="time-inputs">
+                    <input type="number" id="yellowMin" min="0" placeholder="min">
+                    <span class="separator">:</span>
+                    <input type="number" id="yellowSec" min="0" max="59" placeholder="sec">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label>Red Card Time <span class="optional">(optional)</span></label>
+                <div class="time-inputs">
+                    <input type="number" id="redMin" min="0" placeholder="min">
+                    <span class="separator">:</span>
+                    <input type="number" id="redSec" min="0" max="59" placeholder="sec">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label>Bell Ring Time <span class="optional">(optional)</span></label>
+                <div class="time-inputs">
+                    <input type="number" id="bellMin" min="0" placeholder="min">
+                    <span class="separator">:</span>
+                    <input type="number" id="bellSec" min="0" max="59" placeholder="sec">
+                </div>
+            </div>
+            
+            <div class="button-row">
+                <button class="btn btn-back" id="backBtn">← Back to Templates</button>
+                <button class="btn btn-start" id="startBtn">Start Timer</button>
+            </div>
+        </div>
+        
+        <div class="timer-display" id="timerPanel" style="display: none;">
+            <div class="control-panel">
+                <div class="time-elapsed">
+                    <div class="time-value" id="timeDisplay">00:00</div>
+                    <div class="status-indicator" id="statusIndicator">Ready...</div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-stop" id="stopBtn">Stop Timer</button>
+                    <button class="btn btn-reset" id="resetBtn">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
