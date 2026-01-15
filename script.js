@@ -65,6 +65,15 @@ function initAudioContext() {
     }
 }
 
+// Ensure audio is ready on iOS (resume if suspended)
+function ensureAudioContext() {
+    initAudioContext();
+    if (audioContext.state === 'suspended') {
+        return audioContext.resume();
+    }
+    return Promise.resolve();
+}
+
 // Show template selection panel
 function showTemplatePanel() {
     templatePanel.style.display = 'flex';
@@ -87,7 +96,7 @@ function startTimerWithPreset(preset) {
     bellTime = preset.bell;
     
     // Initialize audio context on user interaction
-    initAudioContext();
+    ensureAudioContext();
     
     // Reset state
     greenCardReached = false;
@@ -108,43 +117,43 @@ function startTimerWithPreset(preset) {
 
 // Play doorbell sound using Web Audio API - "ding-dong" effect
 function playDoorbell() {
-    initAudioContext();
-    
-    const now = audioContext.currentTime;
-    
-    // "Ding" - higher pitch (E note)
-    const dingFreq = 659.25; // E5
-    const dingOsc = audioContext.createOscillator();
-    const dingGain = audioContext.createGain();
-    
-    dingOsc.connect(dingGain);
-    dingGain.connect(audioContext.destination);
-    
-    dingOsc.type = 'sine';
-    dingOsc.frequency.setValueAtTime(dingFreq, now);
-    
-    dingGain.gain.setValueAtTime(0.5, now);
-    dingGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-    
-    dingOsc.start(now);
-    dingOsc.stop(now + 0.3);
-    
-    // "Dong" - lower pitch (C note), slightly delayed
-    const dongFreq = 523.25; // C5
-    const dongOsc = audioContext.createOscillator();
-    const dongGain = audioContext.createGain();
-    
-    dongOsc.connect(dongGain);
-    dongGain.connect(audioContext.destination);
-    
-    dongOsc.type = 'sine';
-    dongOsc.frequency.setValueAtTime(dongFreq, now + 0.15);
-    
-    dongGain.gain.setValueAtTime(0.5, now + 0.15);
-    dongGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-    
-    dongOsc.start(now + 0.15);
-    dongOsc.stop(now + 0.5);
+    ensureAudioContext().then(() => {
+        const now = audioContext.currentTime;
+        
+        // "Ding" - higher pitch (E note)
+        const dingFreq = 659.25; // E5
+        const dingOsc = audioContext.createOscillator();
+        const dingGain = audioContext.createGain();
+        
+        dingOsc.connect(dingGain);
+        dingGain.connect(audioContext.destination);
+        
+        dingOsc.type = 'sine';
+        dingOsc.frequency.setValueAtTime(dingFreq, now);
+        
+        dingGain.gain.setValueAtTime(0.5, now);
+        dingGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        
+        dingOsc.start(now);
+        dingOsc.stop(now + 0.3);
+        
+        // "Dong" - lower pitch (C note), slightly delayed
+        const dongFreq = 523.25; // C5
+        const dongOsc = audioContext.createOscillator();
+        const dongGain = audioContext.createGain();
+        
+        dongOsc.connect(dongGain);
+        dongGain.connect(audioContext.destination);
+        
+        dongOsc.type = 'sine';
+        dongOsc.frequency.setValueAtTime(dongFreq, now + 0.15);
+        
+        dongGain.gain.setValueAtTime(0.5, now + 0.15);
+        dongGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        
+        dongOsc.start(now + 0.15);
+        dongOsc.stop(now + 0.5);
+    });
 }
 
 // Play doorbell twice (two ding-dongs)
@@ -235,7 +244,7 @@ function startTimer() {
     }
     
     // Initialize audio context on user interaction
-    initAudioContext();
+    ensureAudioContext();
     
     // Reset state
     greenCardReached = false;
