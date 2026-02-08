@@ -14,6 +14,7 @@ A simple and beautiful timer assistant website with background color changes and
 - 🟡 Background turns yellow at Yellow Card Time
 - 🔴 Background turns red at Red Card Time
 - 🔔 Plays doorbell sound (ding-dong) at Bell Ring Time - rings twice initially, then once every 5 seconds
+- 🔄 Real-time sync across all viewers (shared state, anyone can control)
 - 🎨 80% of screen displays color during timing, control panel at bottom
 - 📱 Responsive design, mobile-friendly
 - 💫 Modern UI design with smooth transitions
@@ -61,7 +62,20 @@ A simple and beautiful timer assistant website with background color changes and
 
 ## Running Locally
 
-Simply open the `index.html` file in your browser - no server or build tools required.
+This version uses a realtime server to sync state across all viewers.
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the server:
+   ```bash
+   npm start
+   ```
+3. Open in your browser:
+   ```text
+   http://localhost:3000
+   ```
 
 ## Notes
 
@@ -71,4 +85,5 @@ Simply open the `index.html` file in your browser - no server or build tools req
 - Recommended to set times in order: Green < Yellow < Red < Bell
 - First bell rings twice (ding-dong ding-dong), then once every 5 seconds
 - During timing, interface automatically adjusts to fullscreen mode with control panel fixed at bottom
+- GitHub Pages cannot provide realtime sync; deploy the Node server for multi-user sync
 
