@@ -1,0 +1,47 @@
+name: Deploy to AI Builders
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Update version.json
+        run: |
+          cat > version.json << EOF
+          {
+            "commit": "${{ github.sha }}",
+            "short_commit": "$(git rev-parse --short HEAD)",
+            "date": "$(date -u +%Y-%m-%d)",
+            "build": "auto",
+            "github_run": "${{ github.run_number }}"
+          }
+          EOF
+      
+      - name: Commit version.json
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add version.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update version.json [skip ci]"
+          git push
+      
+      - name: Trigger deployment
+        env:
+          AI_BUILDER_TOKEN: ${{ secrets.AI_BUILDER_TOKEN }}
+        run: |
+          curl -X POST "https://space.ai-builders.com/backend/v1/deployments" \
+            -H "Authorization: Bearer $AI_BUILDER_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repo_url": "${{ github.repositoryUrl }}",
+              "service_name": "ets-timer",
+              "branch": "main"
+            }'

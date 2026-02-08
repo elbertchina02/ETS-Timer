@@ -7,6 +7,6 @@ RUN npm install --omit=dev
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE $PORT
 
-CMD sh -c "node server.js"
+CMD sh -c "PORT=${PORT:-8000} node server.js"

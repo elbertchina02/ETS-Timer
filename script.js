@@ -1,16 +1,17 @@
 // Timer state
 let timerInterval = null;
 let bellInterval = null;
-let startTime = null;
-let greenTime = 0;
-let yellowTime = 0;
-let redTime = 0;
-let bellTime = 0;
 let audioContext = null;
 let greenCardReached = false;
 let yellowCardReached = false;
 let redCardReached = false;
 let bellRingReached = false;
+let lastStartTime = null;
+
+// Sync state
+let sharedState = null;
+let serverTimeOffset = 0;
+let ws = null;
 
 // DOM elements
 const templatePanel = document.getElementById('templatePanel');
@@ -88,30 +89,89 @@ function showCustomizePanel() {
     timerPanel.style.display = 'none';
 }
 
-// Start timer with preset values
-function startTimerWithPreset(preset) {
-    greenTime = preset.green;
-    yellowTime = preset.yellow;
-    redTime = preset.red;
-    bellTime = preset.bell;
-    
-    // Initialize audio context on user interaction
-    ensureAudioContext();
-    
-    // Reset state
+function showTimerPanel() {
+    templatePanel.style.display = 'none';
+    setupPanel.style.display = 'none';
+    timerPanel.style.display = 'block';
+}
+
+function setBodyForIdle() {
+    document.body.className = '';
+}
+
+function setBodyForTimer() {
+    document.body.classList.add('timer-active');
+}
+
+function resetCardFlags() {
     greenCardReached = false;
     yellowCardReached = false;
     redCardReached = false;
     bellRingReached = false;
-    
-    // Start timer
-    startTime = Date.now();
-    templatePanel.style.display = 'none';
-    setupPanel.style.display = 'none';
-    timerPanel.style.display = 'block';
-    document.body.classList.add('timer-active');
-    statusIndicator.textContent = "I'm ETS Timer";
-    
+    if (bellInterval) {
+        clearInterval(bellInterval);
+        bellInterval = null;
+    }
+}
+
+function applyState(state) {
+    sharedState = state;
+
+    if (state.screen === 'template') {
+        setBodyForIdle();
+        showTemplatePanel();
+        statusIndicator.textContent = 'Ready...';
+        resetCardFlags();
+        lastStartTime = null;
+        return;
+    }
+
+    if (state.screen === 'custom') {
+        setBodyForIdle();
+        showCustomizePanel();
+        statusIndicator.textContent = 'Ready...';
+        resetCardFlags();
+        lastStartTime = null;
+        return;
+    }
+
+    // running or stopped
+    showTimerPanel();
+    setBodyForTimer();
+
+    if (state.screen === 'stopped') {
+        statusIndicator.textContent = '⏸️ Stopped';
+        if (bellInterval) {
+            clearInterval(bellInterval);
+            bellInterval = null;
+        }
+    }
+
+    if (state.screen === 'running' && state.startTime !== lastStartTime) {
+        lastStartTime = state.startTime;
+        resetCardFlags();
+        statusIndicator.textContent = "I'm ETS Timer";
+    }
+}
+
+function getElapsedSeconds() {
+    if (!sharedState) {
+        return 0;
+    }
+    if (sharedState.screen === 'running' && sharedState.startTime) {
+        const now = Date.now() + serverTimeOffset;
+        return Math.max(0, Math.floor((now - sharedState.startTime) / 1000));
+    }
+    if (sharedState.screen === 'stopped') {
+        return Math.max(0, sharedState.elapsedAtStop || 0);
+    }
+    return 0;
+}
+
+function startTicker() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
     timerInterval = setInterval(updateTimer, 100);
 }
 
@@ -168,18 +228,22 @@ function playDoorbellTwice() {
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    return `$${String(mins).padStart(2, '0')}:$${String(secs).padStart(2, '0')}`;
 }
 
 // Update timer display
 function updateTimer() {
-    const currentTime = Date.now();
-    const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-    
+    if (!sharedState) {
+        return;
+    }
+
+    const elapsedSeconds = getElapsedSeconds();
+    const { green = 0, yellow = 0, red = 0, bell = 0 } = sharedState.settings || {};
+
     timeDisplay.textContent = formatTime(elapsedSeconds);
-    
+
     // Check for Green Card (only if time was set)
-    if (greenTime > 0 && !greenCardReached && elapsedSeconds >= greenTime) {
+    if (green > 0 && !greenCardReached && elapsedSeconds >= green) {
         greenCardReached = true;
         document.body.classList.remove('yellow-card', 'red-card');
         document.body.classList.add('timer-active', 'green-card');
@@ -187,7 +251,7 @@ function updateTimer() {
     }
     
     // Check for Yellow Card (only if time was set)
-    if (yellowTime > 0 && !yellowCardReached && elapsedSeconds >= yellowTime) {
+    if (yellow > 0 && !yellowCardReached && elapsedSeconds >= yellow) {
         yellowCardReached = true;
         document.body.classList.remove('green-card', 'red-card');
         document.body.classList.add('timer-active', 'yellow-card');
@@ -195,29 +259,35 @@ function updateTimer() {
     }
     
     // Check for Red Card (only if time was set)
-    if (redTime > 0 && !redCardReached && elapsedSeconds >= redTime) {
+    if (red > 0 && !redCardReached && elapsedSeconds >= red) {
         redCardReached = true;
         document.body.classList.remove('green-card', 'yellow-card');
         document.body.classList.add('timer-active', 'red-card');
         statusIndicator.textContent = '🔴 Red Card';
     }
     
+    if (sharedState.screen !== 'running') {
+        if (bellInterval) {
+            clearInterval(bellInterval);
+            bellInterval = null;
+        }
+        return;
+    }
+
     // Check for Bell Ring (only if time was set)
-    if (bellTime > 0 && !bellRingReached && elapsedSeconds >= bellTime) {
+    if (bell > 0 && !bellRingReached && elapsedSeconds >= bell) {
         bellRingReached = true;
         statusIndicator.textContent = '🔔 Bell Ringing!';
-        playDoorbellTwice(); // First time ring twice (two ding-dongs)
+        playDoorbellTwice();
         
-        // Ring doorbell (once) every 5 seconds after the first double ring
         bellInterval = setInterval(() => {
             playDoorbell();
         }, 5000);
     }
 }
 
-// Start timer
+// Start timer (custom)
 function startTimer() {
-    // Get input values and convert to seconds
     const greenMin = parseInt(document.getElementById('greenMin').value) || 0;
     const greenSec = parseInt(document.getElementById('greenSec').value) || 0;
     const yellowMin = parseInt(document.getElementById('yellowMin').value) || 0;
@@ -226,106 +296,62 @@ function startTimer() {
     const redSec = parseInt(document.getElementById('redSec').value) || 0;
     const bellMin = parseInt(document.getElementById('bellMin').value) || 0;
     const bellSec = parseInt(document.getElementById('bellSec').value) || 0;
-    
-    greenTime = greenMin * 60 + greenSec;
-    yellowTime = yellowMin * 60 + yellowSec;
-    redTime = redMin * 60 + redSec;
-    bellTime = bellMin * 60 + bellSec;
-    
-    // Validate inputs
-    if (greenTime === 0 && yellowTime === 0 && redTime === 0 && bellTime === 0) {
+
+    const settings = {
+        green: greenMin * 60 + greenSec,
+        yellow: yellowMin * 60 + yellowSec,
+        red: redMin * 60 + redSec,
+        bell: bellMin * 60 + bellSec
+    };
+
+    if (settings.green === 0 && settings.yellow === 0 && settings.red === 0 && settings.bell === 0) {
         alert('Please fill in at least one time field!');
         return;
     }
-    
-    if (greenTime < 0 || yellowTime < 0 || redTime < 0 || bellTime < 0) {
+    if (settings.green < 0 || settings.yellow < 0 || settings.red < 0 || settings.bell < 0) {
         alert('Time cannot be negative!');
         return;
     }
-    
-    // Initialize audio context on user interaction
+
     ensureAudioContext();
-    
-    // Reset state
-    greenCardReached = false;
-    yellowCardReached = false;
-    redCardReached = false;
-    bellRingReached = false;
-    
-    // Start timer
-    startTime = Date.now();
-    templatePanel.style.display = 'none';
-    setupPanel.style.display = 'none';
-    timerPanel.style.display = 'block';
-    document.body.classList.add('timer-active');
-    statusIndicator.textContent = "I'm ETS Timer";
-    
-    timerInterval = setInterval(updateTimer, 100);
+    sendAction({ type: 'start', settings });
 }
 
-// Stop timer
 function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    
-    if (bellInterval) {
-        clearInterval(bellInterval);
-        bellInterval = null;
-    }
-    
-    statusIndicator.textContent = '⏸️ Stopped';
+    sendAction({ type: 'stop' });
 }
 
-// Reset timer
 function resetTimer() {
-    stopTimer();
-    
-    // Reset UI
-    document.body.className = '';
-    timeDisplay.textContent = '00:00';
-    
-    // Clear inputs
-    document.getElementById('greenMin').value = '';
-    document.getElementById('greenSec').value = '';
-    document.getElementById('yellowMin').value = '';
-    document.getElementById('yellowSec').value = '';
-    document.getElementById('redMin').value = '';
-    document.getElementById('redSec').value = '';
-    document.getElementById('bellMin').value = '';
-    document.getElementById('bellSec').value = '';
-    
-    // Show template panel
-    showTemplatePanel();
+    sendAction({ type: 'reset' });
 }
 
-// Event listeners
 startBtn.addEventListener('click', startTimer);
 stopBtn.addEventListener('click', stopTimer);
 resetBtn.addEventListener('click', resetTimer);
-backBtn.addEventListener('click', showTemplatePanel);
+backBtn.addEventListener('click', () => sendAction({ type: 'set_screen', screen: 'template' }));
 
-// Template selection event listeners
 preparedSpeechBtn.addEventListener('click', () => {
-    startTimerWithPreset(templates.preparedSpeech);
+    ensureAudioContext();
+    sendAction({ type: 'start', settings: templates.preparedSpeech });
 });
 
 tableTopicBtn.addEventListener('click', () => {
-    startTimerWithPreset(templates.tableTopic);
+    ensureAudioContext();
+    sendAction({ type: 'start', settings: templates.tableTopic });
 });
 
 evaluationBtn.addEventListener('click', () => {
-    startTimerWithPreset(templates.evaluation);
+    ensureAudioContext();
+    sendAction({ type: 'start', settings: templates.evaluation });
 });
 
 keynoteBtn.addEventListener('click', () => {
-    startTimerWithPreset(templates.keynote);
+    ensureAudioContext();
+    sendAction({ type: 'start', settings: templates.keynote });
 });
 
-customizeBtn.addEventListener('click', showCustomizePanel);
+customizeBtn.addEventListener('click', () => sendAction({ type: 'set_screen', screen: 'custom' }));
 
-// Allow Enter key to start timer
 document.querySelectorAll('input').forEach(input => {
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -334,3 +360,48 @@ document.querySelectorAll('input').forEach(input => {
     });
 });
 
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${protocol}://${window.location.host}`);
+
+    ws.addEventListener('message', (event) => {
+        try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === 'state') {
+                serverTimeOffset = payload.serverTime - Date.now();
+                applyState(payload.state);
+            }
+        } catch (error) {
+            console.error('Failed to parse server message', error);
+        }
+    });
+
+    ws.addEventListener('close', () => {
+        setTimeout(connectWebSocket, 1000);
+    });
+}
+
+function sendAction(action) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(action));
+    }
+}
+
+showTemplatePanel();
+connectWebSocket();
+startTicker();
+
+fetch('/version.json')
+    .then(res => res.json())
+    .then(data => {
+        const versionEl = document.getElementById('version');
+        if (versionEl) {
+            versionEl.textContent = `${data.commit || 'unknown'} (${data.date || 'N/A'})`;
+        }
+    })
+    .catch(() => {
+        const versionEl = document.getElementById('version');
+        if (versionEl) {
+            versionEl.textContent = 'dev';
+        }
+    });
