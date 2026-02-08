@@ -341,6 +341,10 @@ body:not(.timer-active) .version-info {
     background: rgba(0, 0, 0, 0.05);
 }
 
+body.timer-active .version-info {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 30px 20px;
