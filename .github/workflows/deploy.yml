@@ -41,7 +41,7 @@ jobs:
             -H "Authorization: Bearer $AI_BUILDER_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "repo_url": "${{ github.repositoryUrl }}",
+              "repo_url": "https://github.com/elbertchina02/ETS-Timer",
               "service_name": "ets-timer",
               "branch": "main"
             }'
