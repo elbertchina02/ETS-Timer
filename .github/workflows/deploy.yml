@@ -30,18 +30,30 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add version.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update version.json [skip ci]"
-          git push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update version.json [skip ci]" && git push) || true
       
       - name: Trigger deployment
         env:
           AI_BUILDER_TOKEN: ${{ secrets.AI_BUILDER_TOKEN }}
         run: |
-          curl -X POST "https://space.ai-builders.com/backend/v1/deployments" \
+          response=$(curl -s -w "\n%{http_code}" -X POST "https://space.ai-builders.com/backend/v1/deployments" \
             -H "Authorization: Bearer $AI_BUILDER_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
               "repo_url": "https://github.com/elbertchina02/ETS-Timer",
               "service_name": "ets-timer",
               "branch": "main"
-            }'
+            }')
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            echo "✅ Deployment triggered successfully"
+          else
+            echo "❌ Deployment failed with status $http_code"
+            exit 1
+          fi
